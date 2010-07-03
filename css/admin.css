@@ -1,0 +1,57 @@
+.scrollArea {
+  height: 300px;
+  width: 530px;
+  overflow: scroll;
+  border: 1px solid #666;
+  background-color: LightSteelBlue;
+  color: DarkSlateGray;
+  padding: 8px;    
+}
+
+body {
+  font-family: Verdana;
+  font-size: smaller;
+  color: MidnightBlue;
+}
+
+table {
+  border-width: 0;
+}
+
+td {
+  border-width: 0;
+}
+  
+td.label {
+  font-size: smaller;
+  width:  10em;
+}
+
+td.value {
+  background: LightSteelBlue;
+  font-size: smaller;
+  color: DarkSlateGray;
+  width:  10em;
+}
+
+a:link {
+  color: MidnightBlue;
+  text-decoration: underline
+}
+
+a:visited {
+  color: MidnightBlue;
+  text-decoration: none
+}
+
+a:active {
+  color: MidnightBlue;
+  text-decoration: none
+}
+
+a:hover {
+  color: DarkSlateGray;
+  text-decoration: none;
+  background: LightSteelBlue;
+}
+

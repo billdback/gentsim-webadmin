@@ -1,0 +1,177 @@
+<html>
+  <head>
+    <title>
+      GEntSim Simulation Monitor
+    </title>
+    <script type="text/javascript" src="js/stomp.js"></script>
+    <script type="text/javascript" src="js/json_parse.js"></script>
+    <script type="text/javascript" src="js/system_commands.js"></script>
+    <link href="css/admin.css" rel="stylesheet" type="text/css" />
+    <script type="text/javascript">
+
+      ///////////////// global settings for connection. ///////////////// 
+
+      var url = "ws://localhost:61614/stomp"
+      var client = Stomp.client(url)
+      //client.debug = function(msg) { alert("debug: " + msg) }
+
+      var user     = "guest"
+      var password = "guest"
+      var status_cnx_id
+      var trace_cnx_id
+
+      ///////////////// system control messages. ///////////////// 
+
+      var send_system_control_message = function(msg) {
+        client.send("/queue/gentsim.system.control", {}, msg)
+      }
+
+      var send_system_start_message = function() {
+        send_system_control_message(system_start_message)
+      }
+
+      var send_system_shutdown_message = function() {
+        send_system_control_message(system_shutdown_message)
+      }
+
+      var send_system_pause_message = function() {
+        send_system_control_message(system_pause_message)
+      }
+
+
+      ///////////////// status messages. ///////////////// 
+
+      var status_topic = "/topic/gentsim.system.status"
+
+      var setInnerHTML = function(htmlId, value) {
+        document.getElementById(htmlId).innerHTML = value
+      }
+
+      var set_running = function() {
+        setInnerHTML("system.status","Running")
+        document.getElementById("controllinks").innerHTML = 
+          "<a href=\"javascript:void(0)\" onclick=\"send_system_pause_message()\">Pause</a>" +
+          "&nbsp;" +
+          "<a href=\"javascript:void(0)\" onclick=\"send_system_shutdown_message()\">Stop</a>"
+      }
+
+      var set_paused = function() {
+        setInnerHTML("system.status","Running")
+        document.getElementById("controllinks").innerHTML = 
+          "<a href=\"javascript:void(0)\" onclick=\"send_system_start_message()\">Start</a>" +
+          "&nbsp;" +
+          "<a href=\"javascript:void(0)\" onclick=\"send_system_shutdown_message()\">Stop</a>"
+      }
+
+      var set_stopped = function() {
+        setInnerHTML("system.status","Stopped")
+        document.getElementById("controllinks").innerHTML = 
+          "<a href=\"javascript:void(0)\" onclick=\"send_system_start_message()\">Start</a>"
+      }
+
+      var status_msg_callback = function(msg) {
+
+        var status_msg = json_parse(msg.body)
+        if      (status_msg.type == "system.status.startup") {
+          document.getElementById("trace.messages").innerHTML = ""
+          if (status_msg.attributes.state == "running") set_running()
+          else                                          set_paused()
+        }
+        else if (status_msg.type == "system.status.shutdown") {
+          set_stopped()
+        }
+        else if (status_msg.type == "system.status.status") {
+          // slight overkill since the proper state may be set.
+          if      (status_msg.attributes.state == "paused")  set_paused()
+          else if (status_msg.attributes.state == "running") set_running()
+
+          setInnerHTML("system.number_entities", status_msg.attributes.number_entities) 
+          setInnerHTML("system.number_services", status_msg.attributes.number_services)
+          setInnerHTML("system.cycle_length",    status_msg.attributes.cycle_length)
+          setInnerHTML("system.timestep",        status_msg.attributes.timestep)
+        }
+
+        // all events show time
+        setInnerHTML("system.time", status_msg.time)
+      }
+
+      var error_callback = function(error) {
+        alert(error)
+      }
+
+      ///////////////// trace messages. ///////////////// 
+
+      var trace_topic = "/topic/gentsim.system.trace"
+
+      var trace_msg_callback = function(msg) {
+        document.getElementById("trace.messages").innerHTML += msg.body + "<br />"
+      }
+
+      ///////////////// Create the client connection. ///////////////// 
+
+      var connect_callback = function() {
+        status_cnx_id = client.subscribe(status_topic, status_msg_callback)
+        trace_cnx_id = client.subscribe(trace_topic, trace_msg_callback)
+      }
+
+      window.onload = function() {
+        client.connect(user, password, connect_callback, error_callback)
+      }
+    </script>
+  </head>
+  <body>
+    <h2>Simulation Control</h2>
+    <span id="controllinks">
+      <a href="javascript:void(0)" onclick="send_system_start_message()">Start</a>
+    </span>
+    <h2>Simulation Status</h2>
+    <table border="0">
+      <tr>
+        <td class="label">
+          Status:
+        </td>
+        <td class="value">
+          <span id="system.status">Stopped</span>
+        </td>
+        <td class="label">
+          Time:
+        </td>
+        <td class="value">
+          <span id="system.time"></span>
+        </td>
+      </tr>
+      <tr>
+        <td class="label">
+          Number Entities:
+        </td>
+        <td class="value">
+          <span id="system.number_entities"></span>
+        </td>
+        <td class="label">
+          Number Services:
+        </td>
+        <td class="value">
+          <span id="system.number_services"></span>
+        </td>
+      </tr>
+      <tr>
+        <td class="label">
+          Cycle Length:
+        </td>
+        <td class="value">
+          <span id="system.cycle_length"> </span>
+        </td>
+        <td class="label">
+          Timestepped:
+        </td>
+        <td class="value">
+          <span id="system.timestep"></span>
+        </td>
+      </tr>
+      <tr>
+    </table>
+    <h2>Simulation Messages</h2>
+    <div id="trace.messages" class="scrollArea">
+    </div>
+  </body>
+</html>
