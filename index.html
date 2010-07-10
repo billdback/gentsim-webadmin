@@ -11,9 +11,12 @@
 
       ///////////////// global settings for connection. ///////////////// 
 
-      var url = "ws://localhost:61614/stomp"
+      var url = "ws://10.0.1.6:61614/stomp"
+      //var url = "ws://localhost:61614/stomp"
       var client = Stomp.client(url)
-      //client.debug = function(msg) { alert("debug: " + msg) }
+      client.debug = function(msg) { 
+      //  document.getElementById("debug.messages").innerHTML += msg + "<br />"
+      }
 
       var user     = "guest"
       var password = "guest"
@@ -38,6 +41,14 @@
         send_system_control_message(system_pause_message)
       }
 
+      var send_system_step_message = function() {
+        send_system_control_message(system_step_message)
+      }
+
+      ///////////////// state flags ///////////////// 
+
+      var sim_state = "unknown" // valid are running, paused, stopped, awaiting step
+      var manual_step = false
 
       ///////////////// status messages. ///////////////// 
 
@@ -47,49 +58,74 @@
         document.getElementById(htmlId).innerHTML = value
       }
 
-      var set_running = function() {
-        setInnerHTML("system.status","Running")
-        document.getElementById("controllinks").innerHTML = 
-          "<a href=\"javascript:void(0)\" onclick=\"send_system_pause_message()\">Pause</a>" +
-          "&nbsp;" +
-          "<a href=\"javascript:void(0)\" onclick=\"send_system_shutdown_message()\">Stop</a>"
-      }
-
-      var set_paused = function() {
-        setInnerHTML("system.status","Running")
-        document.getElementById("controllinks").innerHTML = 
-          "<a href=\"javascript:void(0)\" onclick=\"send_system_start_message()\">Start</a>" +
-          "&nbsp;" +
-          "<a href=\"javascript:void(0)\" onclick=\"send_system_shutdown_message()\">Stop</a>"
-      }
-
-      var set_stopped = function() {
-        setInnerHTML("system.status","Stopped")
-        document.getElementById("controllinks").innerHTML = 
-          "<a href=\"javascript:void(0)\" onclick=\"send_system_start_message()\">Start</a>"
+      set_control_links = function() {
+        setInnerHTML("system.status",sim_state)
+        if (sim_state == "paused") {
+          document.getElementById("controllinks").innerHTML = 
+            "<a href=\"javascript:void(0)\" onclick=\"send_system_start_message()\">Start</a>" +
+            "&nbsp;" +
+            "<a href=\"javascript:void(0)\" onclick=\"send_system_shutdown_message()\">Stop</a>"
+        }
+        else if (sim_state == "running") {
+          if (manual_step) {
+            document.getElementById("controllinks").innerHTML = 
+              "<a href=\"javascript:void(0)\" onclick=\"send_system_pause_message()\">Pause</a>" +
+              "&nbsp;" +
+              "<a href=\"javascript:void(0)\" onclick=\"send_system_step_message()\">Step</a>" +
+              "&nbsp;" +
+              "<a href=\"javascript:void(0)\" onclick=\"send_system_shutdown_message()\">Stop</a>"
+          }
+          else {
+            document.getElementById("controllinks").innerHTML = 
+              "<a href=\"javascript:void(0)\" onclick=\"send_system_pause_message()\">Pause</a>" +
+              "&nbsp;" +
+              "<a href=\"javascript:void(0)\" onclick=\"send_system_shutdown_message()\">Stop</a>"
+          }
+        }
+        else if (sim_state == "stopped") {
+          // no links
+          document.getElementById("controllinks").innerHTML = ""
+        }
+        else if (sim_state == "awaiting step") {
+          document.getElementById("controllinks").innerHTML = 
+            "<a href=\"javascript:void(0)\" onclick=\"send_system_pause_message()\">Pause</a>" +
+            "&nbsp;" +
+            "<a href=\"javascript:void(0)\" onclick=\"send_system_step_message()\">Step</a>" +
+            "&nbsp;" +
+            "<a href=\"javascript:void(0)\" onclick=\"send_system_shutdown_message()\">Stop</a>"
+        }
+        else { // unknown state - error?
+          setInnerHTML("system.status","unknown")
+        }
       }
 
       var status_msg_callback = function(msg) {
+        //debug('msg callback' + msg.body)
 
         var status_msg = json_parse(msg.body)
         if      (status_msg.type == "system.status.startup") {
           document.getElementById("trace.messages").innerHTML = ""
-          if (status_msg.attributes.state == "running") set_running()
-          else                                          set_paused()
+          //document.getElementById("debug.messages").innerHTML = ""
+          if (status_msg.attributes.state == "running") sim_state = "running"
+          else                                          sim_state = "paused"
         }
         else if (status_msg.type == "system.status.shutdown") {
-          set_stopped()
+          sim_state = "stopped"
         }
         else if (status_msg.type == "system.status.status") {
           // slight overkill since the proper state may be set.
-          if      (status_msg.attributes.state == "paused")  set_paused()
-          else if (status_msg.attributes.state == "running") set_running()
+          sim_state = status_msg.attributes.state
+          manual_step = status_msg.attributes.manually_stepped == "true"
 
-          setInnerHTML("system.number_entities", status_msg.attributes.number_entities) 
-          setInnerHTML("system.number_services", status_msg.attributes.number_services)
-          setInnerHTML("system.cycle_length",    status_msg.attributes.cycle_length)
-          setInnerHTML("system.timestep",        status_msg.attributes.timestep)
+          setInnerHTML("system.number_entities",  status_msg.attributes.number_entities) 
+          setInnerHTML("system.number_services",  status_msg.attributes.number_services)
+          setInnerHTML("system.cycle_length",     status_msg.attributes.cycle_length)
+          setInnerHTML("system.timestep",         status_msg.attributes.timestep)
+          setInnerHTML("system.manually_stepped", status_msg.attributes.manually_stepped)
         }
+
+        // change control links if needed.
+        set_control_links()
 
         // all events show time
         setInnerHTML("system.time", status_msg.time)
@@ -131,7 +167,7 @@
           Status:
         </td>
         <td class="value">
-          <span id="system.status">Stopped</span>
+          <span id="system.status">unknown</span>
         </td>
         <td class="label">
           Time:
@@ -161,17 +197,29 @@
         <td class="value">
           <span id="system.cycle_length"> </span>
         </td>
+      </tr>
+      <tr>
         <td class="label">
           Timestepped:
         </td>
         <td class="value">
           <span id="system.timestep"></span>
         </td>
+        <td class="label">
+          Manually Stepped:
+        </td>
+        <td class="value">
+          <span id="system.manually_stepped"></span>
+        </td>
       </tr>
-      <tr>
     </table>
     <h2>Simulation Messages</h2>
     <div id="trace.messages" class="scrollArea">
     </div>
+<!--
+    <h2>Debug Messages</h2>
+    <div id="debug.messages" class="scrollArea">
+    </div>
+-->
   </body>
 </html>

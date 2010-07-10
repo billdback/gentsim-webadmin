@@ -18,6 +18,7 @@ This file is part of gentsim.
 /*
 This file contains system commands in JSON format to be used with webapps to control the simulation.
 */
-var system_start_message     = '{"simtype" : "event", "type" : "system.control.start", "parameters" : null, "attributes" : null}'
+var system_start_message     = '{"simtype" : "event", "type" : "system.control.start",    "parameters" : null, "attributes" : null}'
 var system_shutdown_message  = '{"simtype" : "event", "type" : "system.control.shutdown", "parameters" : null, "attributes" : null}'
-var system_pause_message     = '{"simtype" : "event", "type" : "system.control.pause", "parameters" : null, "attributes" : null}'
+var system_pause_message     = '{"simtype" : "event", "type" : "system.control.pause",    "parameters" : null, "attributes" : null}'
+var system_step_message      = '{"simtype" : "event", "type" : "system.control.step",     "parameters" : null, "attributes" : null}'
