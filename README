@@ -1,0 +1,10 @@
+See COPYING for the license for this software.
+
+Web Site and Documentation:  http://www.gentsim.org
+Contact Info:  billback@gentsim.org
+
+The gentsim-webadmin is a simple thin client that can communicate with simulations that have JMS enabled.  It displays messages from the simulation, monitors status, and provides some level of control, such as starting, stopping, and pausing simulations.  The gentsim-webadmin uses HTML5 websockets and has only been successfully tested with Safari 5 and Chrome 5 browsers.  This also has only been used with ActiveMQ 5.4 Snapshot with JMS and Stomp properly configured.  Finally, this only works with version 2.0 of gentsim (q.v.).
+
+This distribution also includes the following .js files that appear to be public domain and have been redistributed without change:
+- json_parse.js
+- stomp.js
