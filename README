@@ -8,3 +8,4 @@ The gentsim-webadmin is a simple thin client that can communicate with simulatio
 This distribution also includes the following .js files that appear to be public domain and have been redistributed without change:
 - json_parse.js
 - stomp.js
+- jquery-1.4.2.js

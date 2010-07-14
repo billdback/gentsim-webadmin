@@ -20,162 +20,17 @@
     <title>
       GEntSim Simulation Monitor
     </title>
+
+    <script type="text/javascript" src="js/jquery-1.4.2.js"></script>
     <script type="text/javascript" src="js/stomp.js"></script>
     <script type="text/javascript" src="js/json_parse.js"></script>
     <script type="text/javascript" src="js/system_commands.js"></script>
+    <script type="text/javascript" src="js/webadmin.js"></script>
     <link href="css/admin.css" rel="stylesheet" type="text/css" />
-    <script type="text/javascript">
-
-      ///////////////// global settings for connection. ///////////////// 
-
-      var url = "ws://10.0.1.6:61614/stomp"
-      //var url = "ws://localhost:61614/stomp"
-      var client = Stomp.client(url)
-      client.debug = function(msg) { 
-      //  document.getElementById("debug.messages").innerHTML += msg + "<br />"
-      }
-
-      var user     = "guest"
-      var password = "guest"
-      var status_cnx_id
-      var trace_cnx_id
-
-      ///////////////// system control messages. ///////////////// 
-
-      var send_system_control_message = function(msg) {
-        client.send("/queue/gentsim.system.control", {}, msg)
-      }
-
-      var send_system_start_message = function() {
-        send_system_control_message(system_start_message)
-      }
-
-      var send_system_shutdown_message = function() {
-        send_system_control_message(system_shutdown_message)
-      }
-
-      var send_system_pause_message = function() {
-        send_system_control_message(system_pause_message)
-      }
-
-      var send_system_step_message = function() {
-        send_system_control_message(system_step_message)
-      }
-
-      ///////////////// state flags ///////////////// 
-
-      var sim_state = "unknown" // valid are running, paused, stopped, awaiting step
-      var manual_step = false
-
-      ///////////////// status messages. ///////////////// 
-
-      var status_topic = "/topic/gentsim.system.status"
-
-      var setInnerHTML = function(htmlId, value) {
-        document.getElementById(htmlId).innerHTML = value
-      }
-
-      set_control_links = function() {
-        setInnerHTML("system.status",sim_state)
-        if (sim_state == "paused") {
-          document.getElementById("controllinks").innerHTML = 
-            "<a href=\"javascript:void(0)\" onclick=\"send_system_start_message()\">Start</a>" +
-            "&nbsp;" +
-            "<a href=\"javascript:void(0)\" onclick=\"send_system_shutdown_message()\">Stop</a>"
-        }
-        else if (sim_state == "running") {
-          if (manual_step) {
-            document.getElementById("controllinks").innerHTML = 
-              "<a href=\"javascript:void(0)\" onclick=\"send_system_pause_message()\">Pause</a>" +
-              "&nbsp;" +
-              "<a href=\"javascript:void(0)\" onclick=\"send_system_step_message()\">Step</a>" +
-              "&nbsp;" +
-              "<a href=\"javascript:void(0)\" onclick=\"send_system_shutdown_message()\">Stop</a>"
-          }
-          else {
-            document.getElementById("controllinks").innerHTML = 
-              "<a href=\"javascript:void(0)\" onclick=\"send_system_pause_message()\">Pause</a>" +
-              "&nbsp;" +
-              "<a href=\"javascript:void(0)\" onclick=\"send_system_shutdown_message()\">Stop</a>"
-          }
-        }
-        else if (sim_state == "stopped") {
-          // no links
-          document.getElementById("controllinks").innerHTML = ""
-        }
-        else if (sim_state == "awaiting step") {
-          document.getElementById("controllinks").innerHTML = 
-            "<a href=\"javascript:void(0)\" onclick=\"send_system_pause_message()\">Pause</a>" +
-            "&nbsp;" +
-            "<a href=\"javascript:void(0)\" onclick=\"send_system_step_message()\">Step</a>" +
-            "&nbsp;" +
-            "<a href=\"javascript:void(0)\" onclick=\"send_system_shutdown_message()\">Stop</a>"
-        }
-        else { // unknown state - error?
-          setInnerHTML("system.status","unknown")
-        }
-      }
-
-      var status_msg_callback = function(msg) {
-        //debug('msg callback' + msg.body)
-
-        var status_msg = json_parse(msg.body)
-        if      (status_msg.type == "system.status.startup") {
-          document.getElementById("trace.messages").innerHTML = ""
-          //document.getElementById("debug.messages").innerHTML = ""
-          if (status_msg.attributes.state == "running") sim_state = "running"
-          else                                          sim_state = "paused"
-        }
-        else if (status_msg.type == "system.status.shutdown") {
-          sim_state = "stopped"
-        }
-        else if (status_msg.type == "system.status.status") {
-          // slight overkill since the proper state may be set.
-          sim_state = status_msg.attributes.state
-          manual_step = status_msg.attributes.manually_stepped == "true"
-
-          setInnerHTML("system.number_entities",  status_msg.attributes.number_entities) 
-          setInnerHTML("system.number_services",  status_msg.attributes.number_services)
-          setInnerHTML("system.cycle_length",     status_msg.attributes.cycle_length)
-          setInnerHTML("system.timestep",         status_msg.attributes.timestep)
-          setInnerHTML("system.manually_stepped", status_msg.attributes.manually_stepped)
-        }
-
-        // change control links if needed.
-        set_control_links()
-
-        // all events show time
-        setInnerHTML("system.time", status_msg.time)
-      }
-
-      var error_callback = function(error) {
-        alert(error)
-      }
-
-      ///////////////// trace messages. ///////////////// 
-
-      var trace_topic = "/topic/gentsim.system.trace"
-
-      var trace_msg_callback = function(msg) {
-        document.getElementById("trace.messages").innerHTML += msg.body + "<br />"
-      }
-
-      ///////////////// Create the client connection. ///////////////// 
-
-      var connect_callback = function() {
-        status_cnx_id = client.subscribe(status_topic, status_msg_callback)
-        trace_cnx_id = client.subscribe(trace_topic, trace_msg_callback)
-      }
-
-      window.onload = function() {
-        client.connect(user, password, connect_callback, error_callback)
-      }
-    </script>
   </head>
   <body>
     <h2>Simulation Control</h2>
     <span id="controllinks">
-      <a href="javascript:void(0)" onclick="send_system_start_message()">Start</a>
     </span>
     <h2>Simulation Status</h2>
     <table border="0">
@@ -184,13 +39,13 @@
           Status:
         </td>
         <td class="value">
-          <span id="system.status">unknown</span>
+          <span id="system_status">unknown</span>
         </td>
         <td class="label">
           Time:
         </td>
         <td class="value">
-          <span id="system.time"></span>
+          <span id="system_time"></span>
         </td>
       </tr>
       <tr>
@@ -198,13 +53,13 @@
           Number Entities:
         </td>
         <td class="value">
-          <span id="system.number_entities"></span>
+          <span id="system_number_entities"></span>
         </td>
         <td class="label">
           Number Services:
         </td>
         <td class="value">
-          <span id="system.number_services"></span>
+          <span id="system_number_services"></span>
         </td>
       </tr>
       <tr>
@@ -212,7 +67,7 @@
           Cycle Length:
         </td>
         <td class="value">
-          <span id="system.cycle_length"> </span>
+          <span id="system_cycle_length"> </span>
         </td>
       </tr>
       <tr>
@@ -220,23 +75,21 @@
           Timestepped:
         </td>
         <td class="value">
-          <span id="system.timestep"></span>
+          <span id="system_timestep"></span>
         </td>
         <td class="label">
           Manually Stepped:
         </td>
         <td class="value">
-          <span id="system.manually_stepped"></span>
+          <span id="system_manually_stepped"></span>
         </td>
       </tr>
     </table>
     <h2>Simulation Messages</h2>
-    <div id="trace.messages" class="scrollArea">
+    <div id="trace_messages" class="scrollArea">
     </div>
-<!--
     <h2>Debug Messages</h2>
-    <div id="debug.messages" class="scrollArea">
+    <div id="debug_messages" class="scrollArea">
     </div>
--->
   </body>
 </html>
